@@ -1,4 +1,4 @@
-import { getOrderBySessionId, updateOrderFromWebhook } from "@/lib/mock-store";
+import { prisma } from "@/lib/prisma";
 import type { LocusWebhookEvent, OrderStatus } from "@/lib/types";
 
 const WEBHOOK_STATUS_MAP: Record<LocusWebhookEvent["type"], OrderStatus> = {
@@ -31,21 +31,29 @@ export async function POST(request: Request) {
     return Response.json({ received: true, ignored: true });
   }
 
-  const existingOrder = getOrderBySessionId(event.data.sessionId);
+  const existingOrder = await prisma.order.findUnique({
+    where: { locusSessionId: event.data.sessionId },
+    select: { id: true },
+  });
+
   if (!existingOrder) {
     return Response.json({ error: "order not found for this session" }, { status: 404 });
   }
 
-  const updatedOrder = updateOrderFromWebhook({
-    sessionId: event.data.sessionId,
-    status,
-    buyerWalletAddress: event.data.buyerWalletAddress,
-    paymentTxHash: event.data.paymentTxHash,
+  const updatedOrder = await prisma.order.update({
+    where: { locusSessionId: event.data.sessionId },
+    data: {
+      status,
+      buyerWalletAddress: event.data.buyerWalletAddress ?? undefined,
+      paymentTxHash: event.data.paymentTxHash ?? undefined,
+      ...(status === "paid" ? { paidAt: new Date() } : {}),
+    },
+    select: {
+      locusSessionId: true,
+      status: true,
+      paidAt: true,
+    },
   });
-
-  if (!updatedOrder) {
-    return Response.json({ error: "failed to update order" }, { status: 500 });
-  }
 
   return Response.json({
     received: true,
