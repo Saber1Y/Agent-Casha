@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 import { convertNgnToUsdc } from "@/lib/currency";
-import type { GenerateRequestBody } from "@/lib/types";
+import type { GenerateRequestBody, GenerateResponse } from "@/lib/types";
 
 const DEFAULT_MODEL = process.env.OPENAI_MODEL ?? "gpt-5.2";
 
@@ -158,7 +158,7 @@ export async function POST(request: Request) {
     const normalizedBenefits = normalizeList(parsedPayload.benefits).slice(0, 6);
     const normalizedIncludes = normalizeList(parsedPayload.includes).slice(0, 8);
 
-    const generatedProduct = {
+    const generatedProduct: GenerateResponse = {
       title: parsedPayload.title.trim(),
       tagline: parsedPayload.tagline.trim(),
       format: parsedPayload.format.trim(),
