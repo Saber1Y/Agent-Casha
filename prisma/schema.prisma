@@ -1,0 +1,65 @@
+// Prisma schema for Auto Seller Agent MVP
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProductStatus {
+  draft
+  published
+}
+
+enum OrderStatus {
+  pending
+  paid
+  expired
+  cancelled
+}
+
+model Product {
+  id             String        @id @default(cuid())
+  userId         String?       @map("user_id")
+  title          String
+  slug           String        @unique
+  tagline        String
+  format         String
+  targetAudience String        @map("target_audience")
+  description    String
+  benefits       Json
+  includes       Json
+  ideaInput      String        @map("idea_input")
+  priceNgn       Int           @map("price_ngn")
+  priceUsdc      Decimal       @db.Decimal(10, 2) @map("price_usdc")
+  checkoutUrl    String        @map("checkout_url")
+  locusSessionId String        @unique @map("locus_session_id")
+  status         ProductStatus @default(draft)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  orders Order[]
+
+  @@index([status], map: "products_status_idx")
+  @@map("products")
+}
+
+model Order {
+  id                 String      @id @default(cuid())
+  productId          String      @map("product_id")
+  locusSessionId     String      @unique @map("locus_session_id")
+  buyerWalletAddress String?     @map("buyer_wallet_address")
+  amountUsdc         Decimal     @db.Decimal(10, 2) @map("amount_usdc")
+  paymentTxHash      String?     @map("payment_tx_hash")
+  status             OrderStatus @default(pending)
+  paidAt             DateTime?   @map("paid_at")
+  createdAt          DateTime    @default(now()) @map("created_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId], map: "orders_product_id_idx")
+  @@index([status], map: "orders_status_idx")
+  @@map("orders")
+}
