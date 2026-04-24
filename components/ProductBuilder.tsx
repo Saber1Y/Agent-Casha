@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import PriceDisplay from "@/components/PriceDisplay";
@@ -13,7 +13,7 @@ import type {
 } from "@/lib/types";
 
 type ProductBuilderProps = {
-  initialData: ProductFields;
+  initialIdea: string;
   initialCategory?: string;
 };
 
@@ -28,12 +28,91 @@ const parseMoney = (value: string) => {
   return Math.round(parsed);
 };
 
-export default function ProductBuilder({ initialData, initialCategory }: ProductBuilderProps) {
+const createEmptyProductFields = (ideaInput: string): ProductFields => ({
+  title: "",
+  tagline: "",
+  format: "",
+  targetAudience: "",
+  description: "",
+  benefits: [""],
+  includes: [""],
+  ideaInput,
+  priceNgn: 0,
+  priceUsdc: 0,
+});
+
+const requestGeneratedDraft = async (idea: string, category?: string) => {
+  const response = await fetch("/api/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      idea,
+      category,
+    }),
+  });
+
+  const payload = (await response.json()) as GenerateResponse | { error?: string };
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Could not generate product copy.");
+  }
+
+  return payload as GenerateResponse;
+};
+
+export default function ProductBuilder({ initialIdea, initialCategory }: ProductBuilderProps) {
   const router = useRouter();
-  const [form, setForm] = useState<ProductFields>(initialData);
+  const normalizedInitialIdea = initialIdea.trim();
+  const [form, setForm] = useState<ProductFields>(() =>
+    createEmptyProductFields(normalizedInitialIdea),
+  );
+  const [isBootstrapping, setIsBootstrapping] = useState<boolean>(Boolean(normalizedInitialIdea));
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(() =>
+    normalizedInitialIdea ? null : "No product idea found. Go back and add your product idea.",
+  );
+
+  useEffect(() => {
+    if (!normalizedInitialIdea) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const generateInitialDraft = async () => {
+      try {
+        const generated = await requestGeneratedDraft(normalizedInitialIdea, initialCategory);
+        if (cancelled) {
+          return;
+        }
+
+        setForm((current) => ({
+          ...current,
+          ...generated,
+          ideaInput: normalizedInitialIdea,
+        }));
+        setErrorMessage(null);
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setErrorMessage(
+          error instanceof Error ? error.message : "Could not generate the initial product draft.",
+        );
+      } finally {
+        if (!cancelled) {
+          setIsBootstrapping(false);
+        }
+      }
+    };
+
+    void generateInitialDraft();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialCategory, normalizedInitialIdea]);
 
   const setField = <K extends keyof ProductFields>(field: K, value: ProductFields[K]) => {
     setForm((current) => ({
@@ -69,21 +148,7 @@ export default function ProductBuilder({ initialData, initialCategory }: Product
     setIsGenerating(true);
 
     try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          idea: form.ideaInput,
-          category: initialCategory,
-        }),
-      });
-
-      const payload = (await response.json()) as GenerateResponse | { error?: string };
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Could not regenerate product copy.");
-      }
-
-      const generated = payload as GenerateResponse;
+      const generated = await requestGeneratedDraft(form.ideaInput, initialCategory);
       setForm((current) => ({
         ...current,
         ...generated,
@@ -165,7 +230,13 @@ export default function ProductBuilder({ initialData, initialCategory }: Product
           Edit your generated draft before preview and publishing.
         </p>
 
-        <div className="mt-6 space-y-5">
+        {isBootstrapping ? (
+          <p className="mt-5 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700">
+            Generating your first product draft from the idea you submitted...
+          </p>
+        ) : null}
+
+        <fieldset className="mt-6 space-y-5 disabled:opacity-70" disabled={isBootstrapping}>
           <LabeledInput
             id="title"
             label="Title"
@@ -252,7 +323,7 @@ export default function ProductBuilder({ initialData, initialCategory }: Product
             onChange={setListItem}
             onRemove={removeListItem}
           />
-        </div>
+        </fieldset>
       </div>
 
       <aside className="space-y-4 rounded-3xl border border-line bg-surface p-6 shadow-sm sm:p-8">
@@ -273,14 +344,15 @@ export default function ProductBuilder({ initialData, initialCategory }: Product
         <div className="space-y-3">
           <button
             className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isGenerating}
+            disabled={isGenerating || isBootstrapping}
             onClick={handleRegenerate}
             type="button"
           >
-            {isGenerating ? "Regenerating..." : "Regenerate"}
+            {isBootstrapping ? "Generating..." : isGenerating ? "Regenerating..." : "Regenerate"}
           </button>
           <button
             className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-400"
+            disabled={isBootstrapping}
             onClick={handlePreview}
             type="button"
           >
@@ -288,7 +360,7 @@ export default function ProductBuilder({ initialData, initialCategory }: Product
           </button>
           <button
             className="inline-flex w-full items-center justify-center rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-70"
-            disabled={isPublishing}
+            disabled={isPublishing || isBootstrapping}
             onClick={handlePublish}
             type="button"
           >
