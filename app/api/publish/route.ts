@@ -1,13 +1,30 @@
 import { convertNgnToUsdc } from "@/lib/currency";
-import { saveOrder, saveProduct, slugExists } from "@/lib/mock-store";
-import { createId, createUniqueSlug } from "@/lib/slug";
-import type { PublishRequestBody, PublishResponse, ProductRecord } from "@/lib/types";
+import { prisma } from "@/lib/prisma";
+import { createId, slugify } from "@/lib/slug";
+import type { PublishRequestBody, PublishResponse } from "@/lib/types";
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
 
 const isStringArray = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((item) => typeof item === "string");
+
+const createUniqueSlug = async (title: string) => {
+  const baseSlug = slugify(title);
+  let candidateSlug = baseSlug;
+
+  // Keep slug creation simple for MVP while avoiding collisions.
+  while (
+    await prisma.product.findUnique({
+      where: { slug: candidateSlug },
+      select: { id: true },
+    })
+  ) {
+    candidateSlug = `${baseSlug}-${createId(4)}`;
+  }
+
+  return candidateSlug;
+};
 
 export async function POST(request: Request) {
   try {
@@ -32,50 +49,51 @@ export async function POST(request: Request) {
     }
 
     const priceUsdc = convertNgnToUsdc(priceNgn);
-    const slug = createUniqueSlug(body.title, slugExists);
+    const slug = await createUniqueSlug(body.title.trim());
 
-    const productId = `prod_${createId(10)}`;
     const sessionId = `locus_${createId(12)}`;
-    const now = new Date().toISOString();
     const checkoutUrl = `https://checkout.locus.so/session/${sessionId}`;
 
-    const product: ProductRecord = {
-      id: productId,
-      userId: null,
-      title: body.title.trim(),
-      slug,
-      tagline: body.tagline.trim(),
-      format: body.format.trim(),
-      targetAudience: body.targetAudience.trim(),
-      description: body.description.trim(),
-      benefits: body.benefits.map((item) => item.trim()).filter(Boolean),
-      includes: body.includes.map((item) => item.trim()).filter(Boolean),
-      ideaInput: body.ideaInput.trim(),
-      priceNgn,
-      priceUsdc,
-      checkoutUrl,
-      locusSessionId: sessionId,
-      status: "published",
-      createdAt: now,
-      updatedAt: now,
-    };
+    const benefits = body.benefits.map((item) => item.trim()).filter(Boolean);
+    const includes = body.includes.map((item) => item.trim()).filter(Boolean);
 
-    saveProduct(product);
+    const createdProduct = await prisma.$transaction(async (tx) => {
+      const product = await tx.product.create({
+        data: {
+          userId: null,
+          title: body.title.trim(),
+          slug,
+          tagline: body.tagline.trim(),
+          format: body.format.trim(),
+          targetAudience: body.targetAudience.trim(),
+          description: body.description.trim(),
+          benefits,
+          includes,
+          ideaInput: body.ideaInput.trim(),
+          priceNgn,
+          priceUsdc,
+          checkoutUrl,
+          locusSessionId: sessionId,
+          status: "published",
+        },
+      });
 
-    saveOrder({
-      id: `order_${createId(10)}`,
-      productId,
-      locusSessionId: sessionId,
-      buyerWalletAddress: null,
-      amountUsdc: priceUsdc,
-      paymentTxHash: null,
-      status: "pending",
-      paidAt: null,
-      createdAt: now,
+      await tx.order.create({
+        data: {
+          productId: product.id,
+          locusSessionId: sessionId,
+          buyerWalletAddress: null,
+          amountUsdc: priceUsdc,
+          paymentTxHash: null,
+          status: "pending",
+        },
+      });
+
+      return product;
     });
 
     const response: PublishResponse = {
-      productId,
+      productId: createdProduct.id,
       slug,
       publicUrl: `/p/${slug}`,
       checkoutUrl,
