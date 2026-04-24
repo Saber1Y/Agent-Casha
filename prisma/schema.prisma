@@ -1,4 +1,3 @@
-// Prisma schema for Auto Seller Agent MVP
 
 generator client {
   provider = "prisma-client-js"
