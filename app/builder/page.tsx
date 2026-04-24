@@ -1,5 +1,4 @@
 import ProductBuilder from "@/components/ProductBuilder";
-import { buildMockProductFields } from "@/lib/mock-data";
 
 type BuilderPageProps = {
   searchParams: Promise<{
@@ -10,9 +9,8 @@ type BuilderPageProps = {
 
 export default async function BuilderPage({ searchParams }: BuilderPageProps) {
   const params = await searchParams;
-  const idea = typeof params.idea === "string" ? params.idea : "";
+  const idea = typeof params.idea === "string" ? params.idea.trim() : "";
   const category = typeof params.category === "string" ? params.category : undefined;
-  const initialData = buildMockProductFields(idea, category);
 
   return (
     <main className="flex-1 px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
@@ -30,7 +28,7 @@ export default async function BuilderPage({ searchParams }: BuilderPageProps) {
           </p>
         </section>
 
-        <ProductBuilder initialCategory={category} initialData={initialData} />
+        <ProductBuilder initialCategory={category} initialIdea={idea} />
       </div>
     </main>
   );
