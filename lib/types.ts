@@ -75,15 +75,19 @@ export type PublishResponse = {
 };
 
 export type LocusWebhookType =
-  | "checkout.paid"
-  | "checkout.expired"
-  | "checkout.cancelled";
+  | "checkout.session.paid"
+  | "checkout.session.expired";
 
 export type LocusWebhookEvent = {
-  type: LocusWebhookType;
+  event: LocusWebhookType;
+  timestamp: string;
   data: {
     sessionId: string;
-    buyerWalletAddress?: string;
+    amount: string;
+    currency: "USDC";
     paymentTxHash?: string;
+    payerAddress?: string;
+    paidAt?: string;
+    metadata?: Record<string, string>;
   };
 };
