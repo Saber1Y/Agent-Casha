@@ -57,7 +57,7 @@ export default async function PublicProductPage({ params }: PublicProductPagePro
     : buildPublicFallbackFromSlug(slug);
 
   const checkoutUrl =
-    storedProduct?.checkoutUrl ?? `https://checkout.locus.so/session/mock-${slug}`;
+    storedProduct?.checkoutUrl ?? `https://checkout.paywithlocus.com/mock-${slug}`;
 
   return (
     <main className="flex-1 px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
