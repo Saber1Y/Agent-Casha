@@ -20,7 +20,7 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
   const checkoutUrl =
     typeof params.checkoutUrl === "string" && params.checkoutUrl
       ? params.checkoutUrl
-      : `https://checkout.locus.so/session/mock-${slug}`;
+      : `https://checkout.paywithlocus.com/mock-${slug}`;
   const productId = typeof params.productId === "string" ? params.productId : undefined;
 
   return (
