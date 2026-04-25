@@ -49,6 +49,7 @@ model Order {
   id                 String      @id @default(cuid())
   productId          String      @map("product_id")
   locusSessionId     String      @unique @map("locus_session_id")
+  locusWebhookSecret String?     @map("locus_webhook_secret")
   buyerWalletAddress String?     @map("buyer_wallet_address")
   amountUsdc         Decimal     @db.Decimal(10, 2) @map("amount_usdc")
   paymentTxHash      String?     @map("payment_tx_hash")
