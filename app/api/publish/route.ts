@@ -1,4 +1,5 @@
 import { convertNgnToUsdc } from "@/lib/currency";
+import { createLocusCheckoutSession } from "@/lib/locus";
 import { prisma } from "@/lib/prisma";
 import { createId, slugify } from "@/lib/slug";
 import type { PublishRequestBody, PublishResponse } from "@/lib/types";
@@ -26,54 +27,111 @@ const createUniqueSlug = async (title: string) => {
   return candidateSlug;
 };
 
+const resolveBaseUrl = (request: Request) => {
+  const configuredBaseUrl = process.env.APP_BASE_URL ?? process.env.NEXT_PUBLIC_APP_URL;
+  if (configuredBaseUrl && configuredBaseUrl.trim()) {
+    return configuredBaseUrl.trim().replace(/\/+$/, "");
+  }
+
+  const requestUrl = new URL(request.url);
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+
+  if (forwardedHost) {
+    const host = forwardedHost.split(",")[0]?.trim();
+    const protocol = forwardedProto?.split(",")[0]?.trim() || requestUrl.protocol.replace(":", "");
+    if (host && protocol) {
+      return `${protocol}://${host}`;
+    }
+  }
+
+  return requestUrl.origin;
+};
+
 export async function POST(request: Request) {
+  let body: Partial<PublishRequestBody>;
   try {
-    const body = (await request.json()) as Partial<PublishRequestBody>;
+    body = (await request.json()) as Partial<PublishRequestBody>;
+  } catch {
+    return Response.json({ error: "invalid JSON payload" }, { status: 400 });
+  }
 
-    if (
-      !isNonEmptyString(body.title) ||
-      !isNonEmptyString(body.tagline) ||
-      !isNonEmptyString(body.format) ||
-      !isNonEmptyString(body.targetAudience) ||
-      !isNonEmptyString(body.description) ||
-      !isNonEmptyString(body.ideaInput) ||
-      !isStringArray(body.benefits) ||
-      !isStringArray(body.includes)
-    ) {
-      return Response.json({ error: "missing or invalid publish fields" }, { status: 400 });
-    }
+  if (
+    !isNonEmptyString(body.title) ||
+    !isNonEmptyString(body.tagline) ||
+    !isNonEmptyString(body.format) ||
+    !isNonEmptyString(body.targetAudience) ||
+    !isNonEmptyString(body.description) ||
+    !isNonEmptyString(body.ideaInput) ||
+    !isStringArray(body.benefits) ||
+    !isStringArray(body.includes)
+  ) {
+    return Response.json({ error: "missing or invalid publish fields" }, { status: 400 });
+  }
 
-    const priceNgn = Number(body.priceNgn);
-    if (!Number.isFinite(priceNgn) || priceNgn <= 0) {
-      return Response.json({ error: "priceNgn must be a positive number" }, { status: 400 });
-    }
+  const priceNgn = Number(body.priceNgn);
+  if (!Number.isFinite(priceNgn) || priceNgn <= 0) {
+    return Response.json({ error: "priceNgn must be a positive number" }, { status: 400 });
+  }
 
-    const priceUsdc = convertNgnToUsdc(priceNgn);
-    const slug = await createUniqueSlug(body.title.trim());
+  const locusApiKey = process.env.LOCUS_API_KEY ?? process.env.CLAW_API_KEY;
+  if (!locusApiKey) {
+    return Response.json(
+      { error: "LOCUS_API_KEY (or CLAW_API_KEY) is not configured" },
+      { status: 500 },
+    );
+  }
 
-    const sessionId = `locus_${createId(12)}`;
-    const checkoutUrl = `https://checkout.locus.so/session/${sessionId}`;
+  const priceUsdc = convertNgnToUsdc(priceNgn);
+  const title = body.title.trim();
+  const tagline = body.tagline.trim();
+  const format = body.format.trim();
+  const targetAudience = body.targetAudience.trim();
+  const description = body.description.trim();
+  const ideaInput = body.ideaInput.trim();
+  const benefits = body.benefits.map((item) => item.trim()).filter(Boolean);
+  const includes = body.includes.map((item) => item.trim()).filter(Boolean);
+  const slug = await createUniqueSlug(title);
 
-    const benefits = body.benefits.map((item) => item.trim()).filter(Boolean);
-    const includes = body.includes.map((item) => item.trim()).filter(Boolean);
+  const baseUrl = resolveBaseUrl(request);
+  const publicUrl = `/p/${slug}`;
+  const publicProductUrl = `${baseUrl}${publicUrl}`;
+  const successUrl = `${baseUrl}/success?slug=${encodeURIComponent(slug)}&payment=success`;
+  const cancelUrl = `${publicProductUrl}?payment=cancelled`;
+  const webhookUrl = `${baseUrl}/api/locus/webhook`;
+
+  try {
+    const session = await createLocusCheckoutSession({
+      apiKey: locusApiKey,
+      amountUsdc: priceUsdc,
+      description: `${title} (${format})`,
+      successUrl,
+      cancelUrl,
+      webhookUrl,
+      metadata: {
+        slug,
+        productTitle: title.slice(0, 120),
+        priceNgn: String(priceNgn),
+      },
+    });
 
     const createdProduct = await prisma.$transaction(async (tx) => {
       const product = await tx.product.create({
         data: {
           userId: null,
-          title: body.title.trim(),
+          title,
           slug,
-          tagline: body.tagline.trim(),
-          format: body.format.trim(),
-          targetAudience: body.targetAudience.trim(),
-          description: body.description.trim(),
+          tagline,
+          format,
+          targetAudience,
+          description,
           benefits,
           includes,
-          ideaInput: body.ideaInput.trim(),
+          ideaInput,
           priceNgn,
           priceUsdc,
-          checkoutUrl,
-          locusSessionId: sessionId,
+          checkoutUrl: session.checkoutUrl,
+          locusSessionId: session.id,
           status: "published",
         },
       });
@@ -81,7 +139,8 @@ export async function POST(request: Request) {
       await tx.order.create({
         data: {
           productId: product.id,
-          locusSessionId: sessionId,
+          locusSessionId: session.id,
+          locusWebhookSecret: session.webhookSecret ?? null,
           buyerWalletAddress: null,
           amountUsdc: priceUsdc,
           paymentTxHash: null,
@@ -95,12 +154,18 @@ export async function POST(request: Request) {
     const response: PublishResponse = {
       productId: createdProduct.id,
       slug,
-      publicUrl: `/p/${slug}`,
-      checkoutUrl,
+      publicUrl,
+      checkoutUrl: session.checkoutUrl,
     };
 
     return Response.json(response);
-  } catch {
-    return Response.json({ error: "invalid JSON payload" }, { status: 400 });
+  } catch (error) {
+    return Response.json(
+      {
+        error:
+          error instanceof Error ? error.message : "could not create Locus checkout session",
+      },
+      { status: 502 },
+    );
   }
 }
