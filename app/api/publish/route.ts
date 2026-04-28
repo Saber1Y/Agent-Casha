@@ -48,6 +48,9 @@ const resolveBaseUrl = (request: Request) => {
   return requestUrl.origin;
 };
 
+const isLocalHostname = (hostname: string) =>
+  hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0";
+
 export async function POST(request: Request) {
   let body: Partial<PublishRequestBody>;
   try {
@@ -96,9 +99,19 @@ export async function POST(request: Request) {
   const baseUrl = resolveBaseUrl(request);
   const publicUrl = `/p/${slug}`;
   const publicProductUrl = `${baseUrl}${publicUrl}`;
-  const successUrl = `${baseUrl}/success?slug=${encodeURIComponent(slug)}&payment=success`;
-  const cancelUrl = `${publicProductUrl}?payment=cancelled`;
-  const webhookUrl = `${baseUrl}/api/locus/webhook`;
+  const baseHostname = new URL(baseUrl).hostname.toLowerCase();
+  const shouldSendCallbacks = !isLocalHostname(baseHostname);
+  const successUrl = shouldSendCallbacks
+    ? `${baseUrl}/success?slug=${encodeURIComponent(slug)}&payment=success`
+    : undefined;
+  const cancelUrl = shouldSendCallbacks ? `${publicProductUrl}?payment=cancelled` : undefined;
+  const webhookUrl = shouldSendCallbacks ? `${baseUrl}/api/locus/webhook` : undefined;
+
+  if (!shouldSendCallbacks) {
+    console.warn(
+      "Publishing without callback URLs because base URL is local. Set APP_BASE_URL to a public HTTPS URL to enable success redirects and webhooks.",
+    );
+  }
 
   try {
     const session = await createLocusCheckoutSession({
@@ -160,10 +173,15 @@ export async function POST(request: Request) {
 
     return Response.json(response);
   } catch (error) {
+    const baseMessage =
+      error instanceof Error ? error.message : "could not create Locus checkout session";
+    const callbackHint = shouldSendCallbacks
+      ? ""
+      : " Set APP_BASE_URL to a public HTTPS URL if you want success/cancel redirects and webhook updates during local development.";
+
     return Response.json(
       {
-        error:
-          error instanceof Error ? error.message : "could not create Locus checkout session",
+        error: `${baseMessage}${callbackHint}`,
       },
       { status: 502 },
     );
