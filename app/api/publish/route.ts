@@ -113,8 +113,9 @@ export async function POST(request: Request) {
     );
   }
 
+  let session: Awaited<ReturnType<typeof createLocusCheckoutSession>>;
   try {
-    const session = await createLocusCheckoutSession({
+    session = await createLocusCheckoutSession({
       apiKey: locusApiKey,
       amountUsdc: priceUsdc,
       description: `${title} (${format})`,
@@ -127,51 +128,6 @@ export async function POST(request: Request) {
         priceNgn: String(priceNgn),
       },
     });
-
-    const createdProduct = await prisma.$transaction(async (tx) => {
-      const product = await tx.product.create({
-        data: {
-          userId: null,
-          title,
-          slug,
-          tagline,
-          format,
-          targetAudience,
-          description,
-          benefits,
-          includes,
-          ideaInput,
-          priceNgn,
-          priceUsdc,
-          checkoutUrl: session.checkoutUrl,
-          locusSessionId: session.id,
-          status: "published",
-        },
-      });
-
-      await tx.order.create({
-        data: {
-          productId: product.id,
-          locusSessionId: session.id,
-          locusWebhookSecret: session.webhookSecret ?? null,
-          buyerWalletAddress: null,
-          amountUsdc: priceUsdc,
-          paymentTxHash: null,
-          status: "pending",
-        },
-      });
-
-      return product;
-    });
-
-    const response: PublishResponse = {
-      productId: createdProduct.id,
-      slug,
-      publicUrl,
-      checkoutUrl: session.checkoutUrl,
-    };
-
-    return Response.json(response);
   } catch (error) {
     const baseMessage =
       error instanceof Error ? error.message : "could not create Locus checkout session";
@@ -184,6 +140,58 @@ export async function POST(request: Request) {
         error: `${baseMessage}${callbackHint}`,
       },
       { status: 502 },
+    );
+  }
+
+  try {
+    const createdProduct = await prisma.product.create({
+      data: {
+        userId: null,
+        title,
+        slug,
+        tagline,
+        format,
+        targetAudience,
+        description,
+        benefits,
+        includes,
+        ideaInput,
+        priceNgn,
+        priceUsdc,
+        checkoutUrl: session.checkoutUrl,
+        locusSessionId: session.id,
+        status: "published",
+        orders: {
+          create: {
+            locusSessionId: session.id,
+            locusWebhookSecret: session.webhookSecret ?? null,
+            buyerWalletAddress: null,
+            amountUsdc: priceUsdc,
+            paymentTxHash: null,
+            status: "pending",
+          },
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const response: PublishResponse = {
+      productId: createdProduct.id,
+      slug,
+      publicUrl,
+      checkoutUrl: session.checkoutUrl,
+    };
+
+    return Response.json(response);
+  } catch (error) {
+    return Response.json(
+      {
+        error:
+          error instanceof Error ? `failed to persist published product: ${error.message}` : "failed to persist published product",
+      },
+      { status: 500 },
     );
   }
 }
