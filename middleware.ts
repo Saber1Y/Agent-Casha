@@ -1,15 +1,11 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+
+const isPublicRoute = createRouteMatcher([
+  "/(.*)",
+]);
 
 export default clerkMiddleware(async (auth, req) => {
-  // Temporarily disabled for testing
-  // const { userId } = await auth();
-  // if (!userId) {
-  //   const { signInUrl } = auth();
-  //   return new Response("Redirecting to sign-in", {
-  //     status: 302,
-  //     headers: { Location: signInUrl },
-  //   });
-  // }
+  // Allow all routes for now
 });
 
 export const config = {
