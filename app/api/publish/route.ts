@@ -1,3 +1,4 @@
+import { auth } from "@clerk/nextjs/server";
 import { convertNgnToUsdc } from "@/lib/currency";
 export const dynamic = 'force-dynamic';
 import { createLocusCheckoutSession } from "@/lib/locus";
@@ -53,6 +54,11 @@ const isLocalHostname = (hostname: string) =>
   hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0";
 
 export async function POST(request: Request) {
+  const { userId } = await auth();
+  if (!userId) {
+    return Response.json({ error: "unauthorized" }, { status: 401 });
+  }
+
   let body: Partial<PublishRequestBody>;
   try {
     body = (await request.json()) as Partial<PublishRequestBody>;
@@ -147,7 +153,8 @@ export async function POST(request: Request) {
   try {
     const createdProduct = await prisma.product.create({
       data: {
-        userId: null,
+        // clerkUserId after migration - using userId for now until migration runs
+        clerkUserId: userId,
         title,
         slug,
         tagline,
