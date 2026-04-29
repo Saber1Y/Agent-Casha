@@ -2,6 +2,7 @@ import { UserButton } from "@clerk/nextjs";
 
 import ProductForm from "@/components/ProductForm";
 import { AuthGreeting } from "./auth-greeting";
+import { AuthNav } from "./auth-nav";
 
 export default function CreateProductPage() {
   return (
@@ -12,7 +13,10 @@ export default function CreateProductPage() {
             <p className="inline-flex rounded-full border border-accent/20 bg-accent-soft/50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-accent-strong">
               Auto Seller Agent
             </p>
-            <UserButton />
+            <div className="flex items-center gap-4">
+              <AuthNav />
+              <UserButton />
+            </div>
           </div>
           <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
             Turn rough ideas into ready-to-sell digital products
