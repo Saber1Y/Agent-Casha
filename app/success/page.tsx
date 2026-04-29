@@ -12,6 +12,8 @@ type SuccessPageProps = {
     payment?: string;
     title?: string;
     format?: string;
+    includes?: string;
+    downloadLink?: string;
   }>;
 };
 
@@ -31,6 +33,17 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
   const payment = typeof params.payment === "string" ? params.payment : undefined;
   const title = typeof params.title === "string" ? params.title : undefined;
   const format = typeof params.format === "string" ? params.format : undefined;
+  const downloadLink = typeof params.downloadLink === "string" ? params.downloadLink : undefined;
+  
+  // Parse includes from URL (JSON string)
+  let includesList: string[] = ["Digital product files"];
+  if (params.includes) {
+    try {
+      includesList = JSON.parse(params.includes);
+    } catch {
+      // Use default if parse fails
+    }
+  }
 
   // If payment=success, this is a BUYER who just paid
   if (payment === "success") {
@@ -41,7 +54,7 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
           productData={{
             title: title || "Your Product",
             format: format || "Digital Product",
-            includes: ["Digital product files", "Instructions"],
+            includes: includesList,
             description: "Thank you for your purchase!",
           }}
         />

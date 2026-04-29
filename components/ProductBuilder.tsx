@@ -325,6 +325,19 @@ export default function ProductBuilder({ initialIdea, initialCategory }: Product
             onChange={setListItem}
             onRemove={removeListItem}
           />
+
+          <div className="space-y-2">
+            <LabeledInput
+              id="downloadLink"
+              label="Download Link (Optional)"
+              onChange={(value) => setField("downloadLink", value)}
+              placeholder="https://drive.google.com/... or https://dropbox.com/..."
+              value={form.downloadLink || ""}
+            />
+            <p className="text-xs text-slate-500">
+              Link to your product file (Google Drive, Dropbox, etc.). Leave empty for text delivery.
+            </p>
+          </div>
         </fieldset>
       </div>
 

@@ -7,6 +7,7 @@ type SuccessDisplayProps = {
     format: string;
     includes: string[];
     description: string;
+    downloadLink?: string;
   };
   isCreator?: boolean;
 };
@@ -78,7 +79,14 @@ export default function SuccessDisplay({
             <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Format
             </dt>
-            <dd className="mt-1 text-slate-900">{productData.format}</dd>
+            <dd className="mt-1 text-slate-900">
+{productData.format === "PDF guide" && "📄 "}
+              {productData.format === "template pack" && "📝 "}
+              {productData.format === "toolkit" && "🛠️ "}
+              {productData.format === "mini resources" && "💡 "}
+              {productData.format === "ebook" && "📚 "}
+              {productData.format}
+            </dd>
           </div>
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -87,7 +95,7 @@ export default function SuccessDisplay({
             <dd className="mt-1 space-y-1">
               {productData.includes?.map((item, i) => (
                 <li key={i} className="text-slate-700">
-                  • {item}
+                  ✓ {item}
                 </li>
               ))}
             </dd>
@@ -101,11 +109,36 @@ export default function SuccessDisplay({
         </div>
       )}
 
-      <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-        <p className="text-sm text-amber-800">
-          <strong>Next steps:</strong> The creator will send your product to your email
-          within 24 hours. Check your inbox (and spam folder)!
-        </p>
+      <div className="mt-6 rounded-2xl border border-emerald-200 bg-white p-4">
+        <h4 className="font-semibold text-slate-900">📦 How to Get Your Product</h4>
+        
+        {productData?.downloadLink ? (
+          <div className="mt-3">
+            <p className="text-sm text-slate-600 mb-2">
+              Click below to access your product:
+            </p>
+            <a
+              href={productData.downloadLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong"
+            >
+              📥 Download Product
+            </a>
+            <p className="mt-2 text-xs text-slate-500">
+              Opens in new tab
+            </p>
+          </div>
+        ) : (
+          <div className="mt-2">
+            <p className="text-sm text-slate-600">
+              📧 The creator will email your product to your payment email within 24 hours.
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Check your inbox (and spam folder)!
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="mt-7">

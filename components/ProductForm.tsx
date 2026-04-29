@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 
 const CATEGORY_OPTIONS = [
   "PDF guides",
-  "templates",
-  "toolkits",
-  "mini resources",
-  "ebooks",
+  "Template packs",
+  "Toolkits",
+  "Mini resources",
+  "Ebooks",
 ];
 
 export default function ProductForm() {

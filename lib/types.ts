@@ -13,6 +13,9 @@ export type ProductFields = {
   ideaInput: string;
   priceNgn: number;
   priceUsdc: number;
+  // Product delivery - either content or download link
+  productContent?: string;  // Actual content text for email delivery
+  downloadLink?: string; // External link (Google Drive, Dropbox, etc.)
 };
 
 export type ProductRecord = ProductFields & {
