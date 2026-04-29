@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
+import { SignInButton } from "@clerk/nextjs";
 
 import ProductForm from "@/components/ProductForm";
 
@@ -18,5 +19,13 @@ export function AuthGreeting() {
     );
   }
   
-  return null;
+  return (
+    <div className="mt-6">
+      <SignInButton mode="modal">
+        <button className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
+          Sign in to start
+        </button>
+      </SignInButton>
+    </div>
+  );
 }

@@ -32,7 +32,7 @@ export default function ProductForm() {
       params.set("category", category);
     }
 
-    router.push(`/builder?${params.toString()}`);
+    window.location.href = `/builder?${params.toString()}`;
   };
 
   return (

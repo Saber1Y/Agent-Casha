@@ -5,10 +5,11 @@ export const dynamic = 'force-dynamic';
 import { convertNgnToUsdc } from "@/lib/currency";
 import type { GenerateRequestBody, GenerateResponse } from "@/lib/types";
 
-const DEFAULT_MODEL = process.env.OPENAI_MODEL ?? "gpt-5.2";
+const DEFAULT_MODEL = "openai/gpt-4o-mini";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1",
 });
 
 const PRODUCT_SCHEMA = {
@@ -96,11 +97,19 @@ const normalizePriceNgn = (priceNgn: number) => {
   return Math.max(1000, Math.round(priceNgn / 500) * 500);
 };
 
+const SYSTEM_PROMPT = `You are a digital product strategist and direct-response copywriter. Turn rough notes into practical, believable digital offers. Return ONLY valid JSON matching this schema:
+${JSON.stringify(PRODUCT_SCHEMA.properties, null, 2)}`;
+
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as Partial<GenerateRequestBody>;
-    const idea = typeof body.idea === "string" ? body.idea.trim() : "";
+    let body: Partial<GenerateRequestBody>;
+    try {
+      body = (await request.json()) as Partial<GenerateRequestBody>;
+    } catch {
+      return Response.json({ error: "invalid JSON payload" }, { status: 400 });
+    }
 
+    const idea = typeof body.idea === "string" ? body.idea.trim() : "";
     if (!idea) {
       return Response.json({ error: "idea is required" }, { status: 400 });
     }
@@ -119,35 +128,30 @@ export async function POST(request: Request) {
       "Requirements:",
       "- Seller thinks in NGN.",
       "- Return concise, marketable copy.",
-      "- Choose a realistic simple price in NGN for a digital product in Nigeria.",
+      "- Choose a realistic price in NGN for a digital product in Nigeria.",
       "- Keep benefits and includes practical and believable.",
-      "- Ensure output is only valid JSON matching the schema.",
+      "- Output ONLY valid JSON matching the schema.",
     ].join("\n");
 
-    const response = await openai.responses.create({
+    const response = await openai.chat.completions.create({
       model: DEFAULT_MODEL,
-      instructions:
-        "You are a digital product strategist and direct-response copywriter. Turn rough notes into practical, believable digital offers.",
-      input,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: input },
+      ],
       temperature: 0.7,
-      max_output_tokens: 500,
-      text: {
-        format: {
-          type: "json_schema",
-          name: "auto_seller_generated_product",
-          strict: true,
-          schema: PRODUCT_SCHEMA,
-        },
-      },
+      max_tokens: 500,
+      response_format: { type: "json_object" },
     });
 
-    if (!response.output_text) {
+    const text = response.choices[0]?.message?.content;
+    if (!text) {
       return Response.json({ error: "model returned empty output" }, { status: 502 });
     }
 
     let parsedPayload: unknown;
     try {
-      parsedPayload = JSON.parse(response.output_text);
+      parsedPayload = JSON.parse(text);
     } catch {
       return Response.json({ error: "model returned invalid JSON" }, { status: 502 });
     }
@@ -168,18 +172,13 @@ export async function POST(request: Request) {
       priceNgn: normalizedPriceNgn,
       priceUsdc: convertNgnToUsdc(normalizedPriceNgn),
       description: parsedPayload.description.trim(),
-      benefits:
-        normalizedBenefits.length > 0
-          ? normalizedBenefits
-          : ["Practical guidance for immediate implementation"],
-      includes:
-        normalizedIncludes.length > 0
-          ? normalizedIncludes
-          : ["Core digital product file"],
+      benefits: normalizedBenefits.length > 0 ? normalizedBenefits : ["Practical guidance"],
+      includes: normalizedIncludes.length > 0 ? normalizedIncludes : ["Digital product file"],
     };
 
     return Response.json(generatedProduct);
-  } catch {
-    return Response.json({ error: "invalid JSON payload" }, { status: 400 });
+  } catch (error) {
+    console.error("[generate] error:", error);
+    return Response.json({ error: "internal error" }, { status: 500 });
   }
 }
