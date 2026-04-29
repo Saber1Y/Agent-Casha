@@ -53,7 +53,8 @@ const requestGeneratedDraft = async (idea: string, category?: string) => {
 
   const payload = (await response.json()) as GenerateResponse | { error?: string };
   if (!response.ok) {
-    throw new Error(payload.error ?? "Could not generate product copy.");
+    const errorPayload = payload as { error?: string };
+    throw new Error(errorPayload.error ?? "Could not generate product copy.");
   }
 
   return payload as GenerateResponse;
@@ -193,7 +194,8 @@ export default function ProductBuilder({ initialIdea, initialCategory }: Product
 
       const result = (await response.json()) as PublishResponse | { error?: string };
       if (!response.ok) {
-        throw new Error(result.error ?? "Could not publish this product right now.");
+        const errorPayload = result as { error?: string };
+        throw new Error(errorPayload.error ?? "Could not publish this product right now.");
       }
 
       const publishResult = result as PublishResponse;

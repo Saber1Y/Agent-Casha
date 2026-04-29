@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 
+export const dynamic = 'force-dynamic';
+
 import { prisma } from "@/lib/prisma";
 import type { LocusWebhookEvent, OrderStatus } from "@/lib/types";
 
@@ -99,7 +101,7 @@ export async function POST(request: Request) {
     data: {
       status,
       buyerWalletAddress: event.data?.payerAddress ?? undefined,
-      paymentTxHash: event.data.paymentTxHash ?? undefined,
+      paymentTxHash: event.data?.paymentTxHash ?? undefined,
       ...(status === "paid"
         ? {
             paidAt: event.data?.paidAt ? new Date(event.data.paidAt) : new Date(),
