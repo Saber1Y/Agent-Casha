@@ -1,4 +1,5 @@
 import { convertNgnToUsdc } from "@/lib/currency";
+export const dynamic = 'force-dynamic';
 import { createLocusCheckoutSession } from "@/lib/locus";
 import { prisma } from "@/lib/prisma";
 import { createId, slugify } from "@/lib/slug";

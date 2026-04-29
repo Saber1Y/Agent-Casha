@@ -1,5 +1,7 @@
 import OpenAI from "openai";
 
+export const dynamic = 'force-dynamic';
+
 import { convertNgnToUsdc } from "@/lib/currency";
 import type { GenerateRequestBody, GenerateResponse } from "@/lib/types";
 
