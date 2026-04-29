@@ -21,7 +21,7 @@ enum OrderStatus {
 
 model Product {
   id             String        @id @default(cuid())
-  userId         String?       @map("user_id")
+  clerkUserId     String?       @map("clerk_user_id")
   title          String
   slug           String        @unique
   tagline        String
@@ -42,6 +42,7 @@ model Product {
   orders Order[]
 
   @@index([status], map: "products_status_idx")
+  @@index([clerkUserId], map: "products_clerk_user_id_idx")
   @@map("products")
 }
 
