@@ -110,7 +110,7 @@ export async function POST(request: Request) {
   const baseHostname = new URL(baseUrl).hostname.toLowerCase();
   const shouldSendCallbacks = !isLocalHostname(baseHostname);
   const successUrl = shouldSendCallbacks
-    ? `${baseUrl}/success?slug=${encodeURIComponent(slug)}&payment=success`
+    ? `${baseUrl}/success?slug=${encodeURIComponent(slug)}&payment=success&title=${encodeURIComponent(title)}&format=${encodeURIComponent(format)}&includes=${encodeURIComponent(JSON.stringify(includes))}`
     : undefined;
   const cancelUrl = shouldSendCallbacks ? `${publicProductUrl}?payment=cancelled` : undefined;
   const webhookUrl = shouldSendCallbacks ? `${baseUrl}/api/locus/webhook` : undefined;

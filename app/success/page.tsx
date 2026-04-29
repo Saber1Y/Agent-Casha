@@ -1,4 +1,7 @@
+import { redirect } from "next/navigation";
+
 import PublishSuccessCard from "@/components/PublishSuccessCard";
+import SuccessDisplay from "@/components/SuccessDisplay";
 
 type SuccessPageProps = {
   searchParams: Promise<{
@@ -6,6 +9,9 @@ type SuccessPageProps = {
     slug?: string;
     publicUrl?: string;
     checkoutUrl?: string;
+    payment?: string;
+    title?: string;
+    format?: string;
   }>;
 };
 
@@ -22,7 +28,28 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
       ? params.checkoutUrl
       : `https://checkout.paywithlocus.com/mock-${slug}`;
   const productId = typeof params.productId === "string" ? params.productId : undefined;
+  const payment = typeof params.payment === "string" ? params.payment : undefined;
+  const title = typeof params.title === "string" ? params.title : undefined;
+  const format = typeof params.format === "string" ? params.format : undefined;
 
+  // If payment=success, this is a BUYER who just paid
+  if (payment === "success") {
+    return (
+      <main className="flex-1 px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+        <SuccessDisplay
+          slug={slug}
+          productData={{
+            title: title || "Your Product",
+            format: format || "Digital Product",
+            includes: ["Digital product files", "Instructions"],
+            description: "Thank you for your purchase!",
+          }}
+        />
+      </main>
+    );
+  }
+
+  // Otherwise, this is a CREATOR who just published
   return (
     <main className="flex-1 px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
       <PublishSuccessCard
