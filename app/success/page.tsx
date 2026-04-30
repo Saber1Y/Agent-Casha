@@ -28,7 +28,7 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
   const checkoutUrl =
     typeof params.checkoutUrl === "string" && params.checkoutUrl
       ? params.checkoutUrl
-      : `https://checkout.paywithlocus.com/mock-${slug}`;
+      : `https://checkout.paywithlocus.com/${slug}`;
   const productId = typeof params.productId === "string" ? params.productId : undefined;
   const payment = typeof params.payment === "string" ? params.payment : undefined;
   const title = typeof params.title === "string" ? params.title : undefined;

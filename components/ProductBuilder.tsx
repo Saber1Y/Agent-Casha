@@ -338,6 +338,55 @@ export default function ProductBuilder({ initialIdea, initialCategory }: Product
               Link to your product file (Google Drive, Dropbox, etc.). Leave empty for text delivery.
             </p>
           </div>
+
+          <LabeledTextarea
+            id="productContent"
+            label="Your Product Content (Required for delivery)"
+            onChange={(value) => setField("productContent", value)}
+            placeholder="Paste your full guide content here... This is what buyers will receive after payment."
+            rows={8}
+            value={form.productContent || ""}
+          />
+          <p className="text-xs text-slate-500 mb-2">
+            Write or paste the actual content of your product. This will be delivered to buyers after they pay.
+          </p>
+          
+          {form.ideaInput && !form.productContent && (
+            <button
+              type="button"
+              onClick={async () => {
+                setErrorMessage(null);
+                setIsGenerating(true);
+                try {
+                  const response = await fetch("/api/generate-ai-content", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      idea: form.ideaInput,
+                      format: form.format,
+                      title: form.title,
+                      description: form.description,
+                    }),
+                  });
+                  if (!response.ok) {
+                    throw new Error("Could not generate content");
+                  }
+                  const data = await response.json();
+                  setField("productContent", data.content);
+                } catch (error) {
+                  setErrorMessage(error instanceof Error ? error.message : "Could not generate content");
+                } finally {
+                  setIsGenerating(false);
+                }
+              }}
+              className="inline-flex w-full items-center justify-center rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 transition hover:border-amber-400 hover:bg-amber-100"
+            >
+              ✨ Generate Full Content with AI
+            </button>
+          )}
+          <p className="text-xs text-slate-500">
+            Write or paste the actual content of your product. This will be delivered to buyers after they pay.
+          </p>
         </fieldset>
       </div>
 

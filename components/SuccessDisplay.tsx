@@ -8,6 +8,7 @@ type SuccessDisplayProps = {
     includes: string[];
     description: string;
     downloadLink?: string;
+    hasContent?: boolean;
   };
   isCreator?: boolean;
 };
@@ -115,7 +116,7 @@ export default function SuccessDisplay({
         {productData?.downloadLink ? (
           <div className="mt-3">
             <p className="text-sm text-slate-600 mb-2">
-              Click below to access your product:
+              Click below to download your product:
             </p>
             <a
               href={productData.downloadLink}
@@ -123,16 +124,22 @@ export default function SuccessDisplay({
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong"
             >
-              📥 Download Product
+              📥 Download Now
             </a>
-            <p className="mt-2 text-xs text-slate-500">
-              Opens in new tab
+          </div>
+        ) : productData?.hasContent ? (
+          <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+            <p className="text-sm text-emerald-700 font-medium">
+              ✅ Your product is ready!
+            </p>
+            <p className="text-xs text-emerald-600 mt-1">
+              The creator will email your product within 24 hours. Check your inbox!
             </p>
           </div>
         ) : (
           <div className="mt-2">
             <p className="text-sm text-slate-600">
-              📧 The creator will email your product to your payment email within 24 hours.
+              📧 The creator will send your product to your payment email within 24 hours.
             </p>
             <p className="mt-1 text-xs text-slate-500">
               Check your inbox (and spam folder)!

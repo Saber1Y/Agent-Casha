@@ -102,6 +102,8 @@ export async function POST(request: Request) {
   const ideaInput = body.ideaInput.trim();
   const benefits = body.benefits.map((item) => item.trim()).filter(Boolean);
   const includes = body.includes.map((item) => item.trim()).filter(Boolean);
+  const downloadLink = body.downloadLink?.trim() || undefined;
+  const productContent = body.productContent?.trim() || undefined;
   const slug = await createUniqueSlug(title);
 
   const baseUrl = resolveBaseUrl(request);
@@ -110,7 +112,7 @@ export async function POST(request: Request) {
   const baseHostname = new URL(baseUrl).hostname.toLowerCase();
   const shouldSendCallbacks = !isLocalHostname(baseHostname);
   const successUrl = shouldSendCallbacks
-    ? `${baseUrl}/success?slug=${encodeURIComponent(slug)}&payment=success&title=${encodeURIComponent(title)}&format=${encodeURIComponent(format)}&includes=${encodeURIComponent(JSON.stringify(includes))}`
+    ? `${baseUrl}/success?slug=${encodeURIComponent(slug)}&payment=success&title=${encodeURIComponent(title)}&format=${encodeURIComponent(format)}&includes=${encodeURIComponent(JSON.stringify(includes))}${downloadLink ? `&downloadLink=${encodeURIComponent(downloadLink)}` : ""}${productContent ? `&hasContent=true` : ""}`
     : undefined;
   const cancelUrl = shouldSendCallbacks ? `${publicProductUrl}?payment=cancelled` : undefined;
   const webhookUrl = shouldSendCallbacks ? `${baseUrl}/api/locus/webhook` : undefined;

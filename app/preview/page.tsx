@@ -47,7 +47,7 @@ export default function PreviewPage() {
       return fallbackProduct;
     }
   });
-  const publishFallbackUrl = `/success?slug=preview-product&publicUrl=${encodeURIComponent("/p/preview-product")}&checkoutUrl=${encodeURIComponent("https://checkout.paywithlocus.com/mock-preview-product")}`;
+  const publishFallbackUrl = `/success?slug=preview-product&publicUrl=${encodeURIComponent("/p/preview-product")}&checkoutUrl=${encodeURIComponent("https://checkout.paywithlocus.com/preview")}`;
 
   return (
     <main className="flex-1 px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
